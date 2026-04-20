@@ -16,4 +16,4 @@ export NVIM_LISTEN_ADDRESS="$NVIM"
 
 # Execute node from the same directory as this script
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-exec node "$DIR/dist/index.js" "$@"
+exec bun "$DIR/dist/index.js" "$@"

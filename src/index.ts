@@ -1,3 +1,17 @@
+import * as fs from "fs";
+import * as path from "path";
+
+// CRITICAL: Redirect console.log and console.error to our log file immediately
+// This MUST happen before any other imports that might use console.
+const LOG_FILE = "/tmp/coc-mcp-server.log";
+function log(msg: string) {
+  try {
+    fs.appendFileSync(LOG_FILE, `[${new Date().toISOString()}] ${msg}\n`);
+  } catch (e) {}
+}
+console.log = (...args) => log(`[STDOUT] ${args.join(" ")}`);
+console.error = (...args) => log(`[STDERR] ${args.join(" ")}`);
+
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -5,28 +19,9 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { attach, Neovim } from "neovim";
-import * as fs from "fs";
-import * as path from "path";
 
 const args = process.argv.slice(2);
-const DEBUG = args.includes("--debug") || process.env.DEBUG === "true";
-const LOG_FILE_ARG = args.find(arg => arg.startsWith("--log-file="))?.split("=")[1];
-const LOG_FILE = LOG_FILE_ARG || "/tmp/coc-mcp-server.log";
-
-function log(msg: string) {
-  // Always log errors if not in debug, but log everything if in debug
-  if (!DEBUG && !msg.startsWith("Error") && !msg.startsWith("Fatal")) return;
-  try {
-    fs.appendFileSync(LOG_FILE, `[${new Date().toISOString()}] ${msg}\n`);
-  } catch (e) {
-    // Ignore logging errors to prevent server crash
-  }
-}
-
-// CRITICAL: Redirect console.log and console.error to our log file
-// MCP uses stdout for protocol communication, so any stray console.log will break it.
-console.log = (...args) => log(`[STDOUT] ${args.join(" ")}`);
-console.error = (...args) => log(`[STDERR] ${args.join(" ")}`);
+const DEBUG = true; // Force debug for now to catch the issue
 
 // Ensure log file exists if debug is on
 if (DEBUG) {
@@ -83,19 +78,26 @@ process.on("SIGINT", cleanup);
 process.on("SIGTERM", cleanup);
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  log("Received tools/list");
-  return {
-    tools: [
-      {
-        name: "get_diagnostics",
-        description: "Get all diagnostics from coc.nvim",
-        inputSchema: {
-          type: "object",
-          properties: {},
+  log("Received tools/list request");
+  try {
+    const response = {
+      tools: [
+        {
+          name: "get_diagnostics",
+          description: "Get all diagnostics from coc.nvim",
+          inputSchema: {
+            type: "object",
+            properties: {},
+          },
         },
-      },
-    ],
-  };
+      ],
+    };
+    log(`Sending tools/list response: ${JSON.stringify(response)}`);
+    return response;
+  } catch (err: any) {
+    log(`Error in tools/list: ${err.message}`);
+    throw err;
+  }
 });
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {

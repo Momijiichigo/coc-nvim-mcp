@@ -22,8 +22,8 @@ function M.setup(opts)
     vim.notify("coc-nvim-mcp: Cleaning, installing and building...", vim.log.levels.INFO)
     
     -- We use git checkout dist/ to revert any local build artifacts so Lazy.nvim doesn't complain
-    -- Then npm install and build.
-    vim.fn.jobstart("git checkout dist/ && npm install && npm run build", {
+    -- Then bun install and build.
+    vim.fn.jobstart("git checkout dist/ && bun install && bun run build", {
       cwd = plugin_root,
       on_exit = function(_, code)
         if code == 0 then

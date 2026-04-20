@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # coc-mcp-launcher.sh
 # This script is used by the gemini CLI to launch the coc-nvim-mcp server

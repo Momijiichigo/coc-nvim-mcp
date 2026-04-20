@@ -9,7 +9,8 @@ const DEBUG = args.includes("--debug") || process.env.DEBUG === "true";
 const LOG_FILE_ARG = args.find(arg => arg.startsWith("--log-file="))?.split("=")[1];
 const LOG_FILE = LOG_FILE_ARG || "/tmp/coc-mcp-server.log";
 function log(msg) {
-    if (!DEBUG)
+    // Always log errors if not in debug, but log everything if in debug
+    if (!DEBUG && !msg.startsWith("Error") && !msg.startsWith("Fatal"))
         return;
     try {
         fs.appendFileSync(LOG_FILE, `[${new Date().toISOString()}] ${msg}\n`);
@@ -18,6 +19,10 @@ function log(msg) {
         // Ignore logging errors to prevent server crash
     }
 }
+// CRITICAL: Redirect console.log and console.error to our log file
+// MCP uses stdout for protocol communication, so any stray console.log will break it.
+console.log = (...args) => log(`[STDOUT] ${args.join(" ")}`);
+console.error = (...args) => log(`[STDERR] ${args.join(" ")}`);
 // Ensure log file exists if debug is on
 if (DEBUG) {
     try {
@@ -33,14 +38,17 @@ const server = new Server({
 }, {
     capabilities: {
         tools: {},
+        prompts: {},
+        resources: {},
     },
 });
 let nvim;
 async function initNvim() {
     const nvimAddr = process.env.NVIM_LISTEN_ADDRESS || process.env.NVIM;
     if (!nvimAddr) {
-        log("Error: NVIM_LISTEN_ADDRESS or NVIM environment variable not set");
-        throw new Error("NVIM_LISTEN_ADDRESS or NVIM environment variable not set");
+        const msg = "Error: NVIM_LISTEN_ADDRESS or NVIM environment variable not set";
+        log(msg);
+        throw new Error(msg);
     }
     log(`Connecting to Neovim at: ${nvimAddr}`);
     try {
@@ -54,6 +62,13 @@ async function initNvim() {
         throw err;
     }
 }
+// Handle process signals
+async function cleanup() {
+    log("Cleaning up and shutting down...");
+    process.exit(0);
+}
+process.on("SIGINT", cleanup);
+process.on("SIGTERM", cleanup);
 server.setRequestHandler(ListToolsRequestSchema, async () => {
     log("Received tools/list");
     return {
@@ -93,13 +108,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 });
 async function main() {
-    await initNvim();
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    log("Server connected to Stdio transport");
+    try {
+        await initNvim();
+        const transport = new StdioServerTransport();
+        await server.connect(transport);
+        log("Server connected to Stdio transport");
+    }
+    catch (error) {
+        log(`Fatal error in main: ${error.message}`);
+        process.exit(1);
+    }
 }
-main().catch((error) => {
-    log(`Fatal error: ${error.message}`);
+process.on("unhandledRejection", (reason) => {
+    log(`Unhandled Rejection: ${reason}`);
+});
+process.on("uncaughtException", (error) => {
+    log(`Uncaught Exception: ${error.message}`);
     process.exit(1);
 });
+main();
 //# sourceMappingURL=index.js.map

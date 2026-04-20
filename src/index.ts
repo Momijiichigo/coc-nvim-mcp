@@ -52,6 +52,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name } = request.params;
   try {
+    if (!nvim) {
+      return {
+        content: [{ type: "text", text: "Not running from Neovim; Coc MCP feature unavailable" }],
+        isError: true,
+      };
+    }
+
     switch (name) {
       case "get_diagnostics": {
         const diagnostics = await nvim.call("CocAction", ["diagnosticList"]);
@@ -72,13 +79,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 async function main() {
   const nvimAddr = process.env.NVIM_LISTEN_ADDRESS || process.env.NVIM;
-  if (!nvimAddr) {
-    // If not running inside Neovim, exit quietly.
-    // This allows the server to be globally configured but only active when spawned from Neovim.
-    process.exit(0);
+  if (nvimAddr) {
+    await initNvim();
   }
 
-  await initNvim();
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

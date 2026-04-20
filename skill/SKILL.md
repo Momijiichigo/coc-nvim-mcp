@@ -1,6 +1,6 @@
 ---
 name: coc-nvim-mcp
-description: Expertise in language-specific diagnostics and LSP information provided by coc.nvim. Use when the user asks for error analysis, code quality checks, or diagnostic information for any language in the editor.
+description: Expertise in language-specific diagnostics and LSP information provided by coc.nvim. Use whenever you need error analysis, code quality checks, or diagnostic information for any language in the editor.
 ---
 
 # Neovim CoC Diagnostics Instructions

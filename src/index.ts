@@ -23,6 +23,7 @@ let nvim: Neovim;
 async function initNvim() {
   const nvimAddr = process.env.NVIM_LISTEN_ADDRESS || process.env.NVIM;
   if (!nvimAddr) {
+    // This is handled in main()
     throw new Error("NVIM_LISTEN_ADDRESS or NVIM environment variable not set");
   }
 
@@ -70,6 +71,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 async function main() {
+  const nvimAddr = process.env.NVIM_LISTEN_ADDRESS || process.env.NVIM;
+  if (!nvimAddr) {
+    // If not running inside Neovim, exit quietly.
+    // This allows the server to be globally configured but only active when spawned from Neovim.
+    process.exit(0);
+  }
+
   await initNvim();
   const transport = new StdioServerTransport();
   await server.connect(transport);

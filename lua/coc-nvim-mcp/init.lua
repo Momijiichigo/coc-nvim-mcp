@@ -19,9 +19,11 @@ function M.setup(opts)
   
   vim.api.nvim_create_user_command("CocMcpUpdate", function()
     local plugin_root = vim.fn.fnamemodify(debug.getinfo(1).source:sub(2), ":h:h:h")
-    vim.notify("coc-nvim-mcp: Installing dependencies and building...", vim.log.levels.INFO)
+    vim.notify("coc-nvim-mcp: Cleaning, installing and building...", vim.log.levels.INFO)
     
-    vim.fn.jobstart("npm install && npm run build", {
+    -- We use git checkout dist/ to revert any local build artifacts so Lazy.nvim doesn't complain
+    -- Then npm install and build.
+    vim.fn.jobstart("git checkout dist/ && npm install && npm run build", {
       cwd = plugin_root,
       on_exit = function(_, code)
         if code == 0 then

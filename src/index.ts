@@ -76,30 +76,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {},
         },
       },
-      {
-        name: "get_definition",
-        description: "Get definition at the current cursor position",
-        inputSchema: {
-          type: "object",
-          properties: {},
-        },
-      },
-      {
-        name: "get_references",
-        description: "Get references for the symbol at the current cursor position",
-        inputSchema: {
-          type: "object",
-          properties: {},
-        },
-      },
-      {
-        name: "read_buffer",
-        description: "Read the content of the current Neovim buffer",
-        inputSchema: {
-          type: "object",
-          properties: {},
-        },
-      },
     ],
   };
 });
@@ -113,25 +89,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const diagnostics = await nvim.call("CocAction", ["diagnosticList"]);
         return {
           content: [{ type: "text", text: JSON.stringify(diagnostics, null, 2) }],
-        };
-      }
-      case "get_definition": {
-        const definitions = await nvim.call("CocAction", ["definitions"]);
-        return {
-          content: [{ type: "text", text: JSON.stringify(definitions, null, 2) }],
-        };
-      }
-      case "get_references": {
-        const references = await nvim.call("CocAction", ["references"]);
-        return {
-          content: [{ type: "text", text: JSON.stringify(references, null, 2) }],
-        };
-      }
-      case "read_buffer": {
-        const buffer = await nvim.buffer;
-        const lines = await buffer.lines;
-        return {
-          content: [{ type: "text", text: lines.join("\n") }],
         };
       }
       default:

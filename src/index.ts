@@ -1,20 +1,11 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
 import { attach, Neovim } from "neovim";
 
-const server = new Server(
+const server = new McpServer(
   {
     name: "coc-nvim-mcp",
     version: "1.0.0",
-  },
-  {
-    capabilities: {
-      tools: {},
-    },
   }
 );
 
@@ -34,48 +25,32 @@ async function initNvim() {
   }
 }
 
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      {
-        name: "get_diagnostics",
-        description: "Get all diagnostics from coc.nvim",
-        inputSchema: {
-          type: "object",
-          properties: {},
-        },
-      },
-    ],
-  };
-});
+server.registerTool(
+  "get_diagnostics",
+  {
+    description: "Get all diagnostics from coc.nvim",
+  },
+  async () => {
+    try {
+      if (!nvim) {
+        return {
+          content: [{ type: "text", text: "Not running from Neovim; Coc MCP feature unavailable" }],
+          isError: true,
+        };
+      }
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name } = request.params;
-  try {
-    if (!nvim) {
+      const diagnostics = await nvim.call("CocAction", ["diagnosticList"]);
       return {
-        content: [{ type: "text", text: "Not running from Neovim; Coc MCP feature unavailable" }],
+        content: [{ type: "text", text: JSON.stringify(diagnostics, null, 2) }],
+      };
+    } catch (error: any) {
+      return {
+        content: [{ type: "text", text: `Error: ${error.message}` }],
         isError: true,
       };
     }
-
-    switch (name) {
-      case "get_diagnostics": {
-        const diagnostics = await nvim.call("CocAction", ["diagnosticList"]);
-        return {
-          content: [{ type: "text", text: JSON.stringify(diagnostics, null, 2) }],
-        };
-      }
-      default:
-        throw new Error(`Unknown tool: ${name}`);
-    }
-  } catch (error: any) {
-    return {
-      content: [{ type: "text", text: `Error: ${error.message}` }],
-      isError: true,
-    };
   }
-});
+);
 
 async function main() {
   const nvimAddr = process.env.NVIM_LISTEN_ADDRESS || process.env.NVIM;
@@ -87,6 +62,6 @@ async function main() {
   await server.connect(transport);
 }
 
-main().catch((error) => {
+main().catch((_error) => {
   process.exit(1);
 });

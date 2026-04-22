@@ -26,12 +26,16 @@ async function initNvim() {
   }
 }
 
+type ToolResponse = {
+  content: Array<{ type: "text", text: string}>
+  isError?: boolean
+}
 server.registerTool(
   "get_diagnostics",
   {
     description: "Get all diagnostics from coc.nvim",
   },
-  async () => {
+  async (): Promise<ToolResponse> => {
     try {
       if (!nvim) {
         return {
@@ -57,13 +61,13 @@ server.registerTool(
   "raw_get_hover",
   {
     description: "Get hover information (documentation) for a specific buffer, line, and column",
-    inputSchema: {
+    inputSchema: z.object({
       bufnr: z.number().describe("Buffer number"),
       line: z.number().describe("1-based line number"),
       col: z.number().describe("1-based column number"),
-    },
+    }),
   },
-  async ({ bufnr, line, col }) => {
+  async ({ bufnr, line, col }): Promise<ToolResponse> => {
     try {
       if (!nvim) {
         return {
@@ -97,14 +101,14 @@ server.registerTool(
   "get_hover",
   {
     description: "Get hover information for a symbol in a file. Automatically finds the column and handles file loading.",
-    inputSchema: {
+    inputSchema: z.object({
       file_path: z.string().describe("Absolute path to the file"),
       line: z.number().describe("1-based line number"),
       symbol: z.string().describe("The symbol to hover over"),
       context: z.string().optional().describe("A unique snippet from the line containing the symbol to help disambiguate multiple occurrences"),
-    },
+    }),
   },
-  async ({ file_path, line, symbol, context }) => {
+  async ({ file_path, line, symbol, context }): Promise<ToolResponse> => {
     try {
       if (!nvim) {
         return {
